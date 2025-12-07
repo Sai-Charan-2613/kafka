@@ -1491,10 +1491,10 @@ public class StreamsBuilderTest {
     }
 
     @Test
-    public void shouldNotAllowReadingFromOverlappingAndUnequalCollectionOfTopics() {
-        builder.stream(Collections.singletonList("topic"));
-        builder.stream(asList("topic", "anotherTopic"));
-        assertThrows(TopologyException.class, builder::build);
+    public void shouldAllowReadingFromOverlappingAndUnequalCollectionOfTopics() {
+        builder.stream(asList("topic1", "topic2", "topic3"));
+        builder.stream(asList("topic1", "topic2", "topic4"));
+        assertBuildDoesNotThrow(builder);
     }
 
     @Test

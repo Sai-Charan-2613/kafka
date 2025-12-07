@@ -403,25 +403,42 @@ public class InternalStreamsBuilder implements InternalNameProvider {
                             } else {
                                 final StreamSourceNode<?, ?> mainSourceNode = topicsToSourceNodes.get(
                                     topic);
-                                // TODO we only merge source nodes if the subscribed topic(s) are an exact match, so it's still not
-                                // possible to subscribe to topicA in one KStream and topicA + topicB in another. We could achieve
-                                // this by splitting these source nodes into one topic per node and routing to the subscribed children
                                 if (!mainSourceNode.topicNames()
                                     .equals(currentSourceNode.topicNames())) {
-                                    LOG.error(
-                                        "Topic {} was found in  subscription for non-equal source nodes {} and {}",
-                                        topic, mainSourceNode, currentSourceNode);
-                                    throw new TopologyException(
-                                        "Two source nodes are subscribed to overlapping but not equal input topics");
+                                    final StreamSourceNode<?, ?> splitMainSourceNode = splitStreamSourceNode(mainSourceNode, topic);
+                                    final StreamSourceNode<?, ?> splitCurrentSourceNode = splitStreamSourceNode(currentSourceNode, topic);
+                                    splitMainSourceNode.merge(splitCurrentSourceNode);
+                                    root.removeChild(splitCurrentSourceNode);
+                                } else {
+                                    mainSourceNode.merge(currentSourceNode);
+                                    root.removeChild(graphNode);
                                 }
-                                mainSourceNode.merge(currentSourceNode);
-                                root.removeChild(graphNode);
                             }
                         }
                     }
                 }
             }
         }
+    }
+
+    private StreamSourceNode<?, ?> splitStreamSourceNode(final StreamSourceNode<?, ?> sourceNode, final String topic) {
+        if (sourceNode.topicNames().isPresent() && sourceNode.topicNames().get().size() > 1) {
+            final Set<String> nonSplitTopics = new HashSet<>(sourceNode.topicNames().get());
+            nonSplitTopics.remove(topic);
+            final Set<String> splitTopics = new HashSet<>();
+            splitTopics.add(topic);
+            final StreamSourceNode<?, ?> splitNode = new StreamSourceNode<>(sourceNode.nodeName() + topic, splitTopics, sourceNode.consumedInternal());
+            final StreamSourceNode<?, ?> nonSplitNode = new StreamSourceNode<>(sourceNode.nodeName(), nonSplitTopics, sourceNode.consumedInternal());
+            for (final GraphNode child : sourceNode.children()) {
+                addGraphNode(splitNode, child);
+                addGraphNode(nonSplitNode, child);
+            }
+            addGraphNode(root, splitNode);
+            addGraphNode(root, nonSplitNode);
+            root.removeChild(sourceNode);
+            return splitNode;
+        }
+        return sourceNode;
     }
 
 
