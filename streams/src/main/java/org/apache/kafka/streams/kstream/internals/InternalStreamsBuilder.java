@@ -397,6 +397,7 @@ public class InternalStreamsBuilder implements InternalNameProvider {
                     }
                 } else {
                     if (currentSourceNode.topicNames().isPresent()) {
+                        final Set<String> retainedTopics = new HashSet<>(currentSourceNode.topicNames().get());
                         for (final String topic : currentSourceNode.topicNames().get()) {
                             if (!topicsToSourceNodes.containsKey(topic)) {
                                 topicsToSourceNodes.put(topic, currentSourceNode);
@@ -405,16 +406,23 @@ public class InternalStreamsBuilder implements InternalNameProvider {
                                     topic);
                                 if (!mainSourceNode.topicNames()
                                     .equals(currentSourceNode.topicNames())) {
-                                    final StreamSourceNode<?, ?> splitMainSourceNode = splitStreamSourceNode(mainSourceNode, topic);
+//                                    final StreamSourceNode<?, ?> splitMainSourceNode = splitStreamSourceNode(mainSourceNode, topic);
                                     final StreamSourceNode<?, ?> splitCurrentSourceNode = splitStreamSourceNode(currentSourceNode, topic);
-                                    splitMainSourceNode.merge(splitCurrentSourceNode);
-                                    root.removeChild(splitCurrentSourceNode);
+                                    retainedTopics.remove(topic);
+                                    mainSourceNode.merge(splitCurrentSourceNode);
+                                    root.removeChild(splitCurrentSourceNode); // removeChild() is using an instance of graphNode as arg
                                 } else {
                                     mainSourceNode.merge(currentSourceNode);
-                                    root.removeChild(graphNode);
                                 }
                             }
                         }
+                        if (retainedTopics.size() < currentSourceNode.topicNames().get().size()) {
+                            final StreamSourceNode<?, ?> retainedStreamSourceNode = new StreamSourceNode<>(currentSourceNode.nodeName(), retainedTopics, currentSourceNode.consumedInternal());
+                            for (final GraphNode child: currentSourceNode.children())
+                                retainedStreamSourceNode.addChild(child);
+                            addGraphNode(root, retainedStreamSourceNode);  // addGraphNode() is using an instance of graphNode as arg
+                        }
+                        root.removeChild(graphNode);
                     }
                 }
             }
@@ -423,19 +431,19 @@ public class InternalStreamsBuilder implements InternalNameProvider {
 
     private StreamSourceNode<?, ?> splitStreamSourceNode(final StreamSourceNode<?, ?> sourceNode, final String topic) {
         if (sourceNode.topicNames().isPresent() && sourceNode.topicNames().get().size() > 1) {
-            final Set<String> nonSplitTopics = new HashSet<>(sourceNode.topicNames().get());
-            nonSplitTopics.remove(topic);
+//            final Set<String> nonSplitTopics = new HashSet<>(sourceNode.topicNames().get());
+//            nonSplitTopics.remove(topic);
             final Set<String> splitTopics = new HashSet<>();
             splitTopics.add(topic);
             final StreamSourceNode<?, ?> splitNode = new StreamSourceNode<>(sourceNode.nodeName() + topic, splitTopics, sourceNode.consumedInternal());
-            final StreamSourceNode<?, ?> nonSplitNode = new StreamSourceNode<>(sourceNode.nodeName(), nonSplitTopics, sourceNode.consumedInternal());
+//            final StreamSourceNode<?, ?> nonSplitNode = new StreamSourceNode<>(sourceNode.nodeName(), nonSplitTopics, sourceNode.consumedInternal());
             for (final GraphNode child : sourceNode.children()) {
                 addGraphNode(splitNode, child);
-                addGraphNode(nonSplitNode, child);
+//                addGraphNode(nonSplitNode, child);
             }
             addGraphNode(root, splitNode);
-            addGraphNode(root, nonSplitNode);
-            root.removeChild(sourceNode);
+//            addGraphNode(root, nonSplitNode);
+//            root.removeChild(sourceNode);
             return splitNode;
         }
         return sourceNode;
