@@ -123,11 +123,16 @@ org.apache.kafka.raft.KafkaRaftClientDriverTest:
 - testUncaughtException
 org.apache.kafka.raft.KafkaRaftClientFetchTest:
 - testDefaultHwmDeferred
+- testFetchMaxBytesAlwaysReturnsAllBatchesForLargeMax
+- testFetchMaxBytesAlwaysReturnsAtLeastOneBatch
+- testFetchMaxBytesBatchesInvariants
+- testFetchMaxBytesWithTwoBatches
 - testHighWatermarkSentInFetchRequest
 - testInvalidMemoryRecords
 - testOutdatedHwmCompletedWhenLeaderKnowsHwm
 - testRandomRecords
 - testReplicationOfHigherPartitionLeaderEpoch
+- testSentFetchUsesQuorumMaxBytesConfiguration
 - testUnchangedHighWatermarkDeferred
 - testUnknownHwmDeferredWhenLeaderDoesNotKnowHwm
 - testUpdatedHighWatermarkCompleted
@@ -236,6 +241,7 @@ org.apache.kafka.raft.KafkaRaftClientSnapshotTest:
 - testFetchSnapshotRequestWithInvalidPosition
 - testFetchSnapshotRequestWithNewerEpoch
 - testFetchSnapshotRequestWithOlderEpoch
+- testFetchSnapshotRequestWithPartialData
 - testFetchSnapshotResponseFromNewerEpochLeader
 - testFetchSnapshotResponseFromNewerEpochNotLeader
 - testFetchSnapshotResponseFromOlderEpoch
@@ -249,6 +255,8 @@ org.apache.kafka.raft.KafkaRaftClientSnapshotTest:
 - testLeaderImmediatelySendsSnapshotId
 - testLeaderListenerNotified
 - testLeaderShouldResignLeadershipIfNotGetFetchSnapshotRequestFromMajorityVoters
+- testListenerReceivesBootstrapSnapshot
+- testListenerReceivesBootstrapSnapshotViaFollowerFetch
 - testListenerRenotified
 - testPartialFetchSnapshotRequestAsLeader
 - testSecondListenerNotified
@@ -428,12 +436,17 @@ org.apache.kafka.raft.MockLogTest:
 - testFailToIncreaseLogStartPastHighWatermark
 - testInvalidLeaderEpoch
 - testInvalidMemoryRecords
+- testLogLimitsReturnsAtLeastOne
+- testLogLimitsReturnsLessThanMaxBytes
 - testMetadataValidation
+- testMockLogReadExtremelyLargeMultiBatch
+- testMockLogReadExtremelyLargeSingleBatch
 - testMonotonicEpochStartOffset
 - testRandomRecords
 - testReadMissingSnapshot
 - testReadOutOfRangeOffset
 - testReadRecords
+- testReadRespectsMaxSizeInBytes
 - testReadUpToHighWatermark
 - testReadUpToLogEnd
 - testTopicId
@@ -681,9 +694,25 @@ org.apache.kafka.raft.internals.BatchMemoryPoolTest:
 - testOversizeAllocation
 - testReleaseBufferNotMatchingBatchSize
 org.apache.kafka.raft.internals.BlockingMessageQueueTest:
+- testAddRejectsNullMessage
 - testOfferAndPoll
 - testWakeupFromPoll
+- testWakeupsAreTransparentToIsEmptyAndDrainedOnPoll
+org.apache.kafka.raft.internals.ChangeVoterHandlerStateTest:
+- testAddVoterLifecycle
+- testCanReplaceAddVoterWithAnotherAddVoter
+- testCanReplaceRemoveVoterWithAnotherRemoveVoter
+- testCannotSetAddVoterWhenRemoveVoterPresent
+- testCannotSetRemoveVoterWhenAddVoterPresent
+- testIsOperationPendingWithAddVoter
+- testIsOperationPendingWithRemoveVoter
+- testMaybeExpirePendingAddVoter
+- testMaybeExpirePendingRemoveVoter
+- testMaybeResetPendingVoterHandlerState
+- testRemoveVoterLifecycle
 org.apache.kafka.raft.internals.KRaftControlRecordStateMachineTest:
+- testBufferSupplierCreatedAndClosedOnLogRead
+- testBufferSupplierCreatedOnSnapshotRead
 - testEmptyPartition
 - testEmptyPartitionWithNoStaticVoters
 - testTrimPrefixTo
@@ -715,10 +744,13 @@ org.apache.kafka.raft.internals.KafkaRaftLogTest:
 - testHighWatermarkOffsetMetadata
 - testInvalidLeaderEpoch
 - testInvalidMemoryRecords
+- testLogLimitsReturnsAtLeastOne
+- testLogLimitsReturnsLessThanMaxBytes
 - testMaxBatchSize
 - testRandomRecords
 - testReadMissingSnapshot
 - testReadMissingSnapshotFile
+- testReadRespectsMaxSizeInBytes
 - testSegmentMsConfigIsSetInMetadataLog
 - testSegmentsLessThanLatestSnapshot
 - testSnapshotDeletionWithInvalidSnapshotState
@@ -754,6 +786,11 @@ org.apache.kafka.raft.internals.RecordsBatchReaderTest:
 - testLeaderChangeControlBatch
 - testReadFromFileRecords
 - testReadFromMemoryRecords
+org.apache.kafka.raft.internals.RecordsDecodingStrategyTest:
+- testControlOnly
+- testDataAndControl
+- testDataOnly
+- testNone
 org.apache.kafka.raft.internals.RecordsIteratorTest:
 - testControlRecordIterationWithKraftVersion0
 - testControlRecordIterationWithKraftVersion1
@@ -767,7 +804,10 @@ org.apache.kafka.raft.internals.ThresholdPurgatoryTest:
 - testCompleteAll
 - testCompleteAllExceptionally
 - testExpiration
-- testExternalCompletion
+- testExpirationReducesWaitingCount
+- testMaybeCompleteWithHigherValue
+- testMultipleAwaitersWithSameThreshold
+- testNumWaitingWithMixedCompletions
 - testThresholdCompletion
 org.apache.kafka.raft.internals.TreeMapLogHistoryTest:
 - testAddAt
